@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reels Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: dark, phone-shaped 9:16 cards on horizontal rails, one rail per editable section, one tab per project. */
+:root{
+  --bg:#0c0c0f;
+  --panel:#17171c;
+  --line:#2a2a33;
+  --text:#f3f1ee;
+  --muted:#8f8c97;
+  --accent:#ff6a4d;
+  --display:'Bricolage Grotesque','Helvetica Neue',Arial,sans-serif;
+  --body:'DM Sans','Helvetica Neue',Arial,sans-serif;
+  --gut:20px;
+  --card-w:clamp(170px,56vw,236px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.5;min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1160px;margin:0 auto;padding:0 var(--gut)}
+
+/* top bar */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;min-height:64px}
+.status{font-size:13px;color:var(--muted)}
+.actions{display:flex;gap:8px;margin-left:auto}
+.btn{border:1px solid var(--line);background:var(--panel);padding:8px 16px;border-radius:999px;font-size:14px;font-weight:500;transition:background .15s,border-color .15s;white-space:nowrap}
+.btn:hover{border-color:#44444f}
+.btn.on{background:var(--accent);border-color:var(--accent);color:#16110f}
+.btn.solid{background:var(--text);color:#111;border-color:var(--text)}
+
+/* project tabs */
+.tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;padding:8px 18px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;min-width:44px;text-align:center}
+.tab:hover{border-color:#55556a;color:var(--text)}
+.tab.on{background:var(--text);border-color:var(--text);color:#111;cursor:default}
+.tab.add{background:transparent;border-style:dashed}
+.ptools{display:none;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+body.editing .ptools{display:flex}
+.ptools .grp{display:flex;gap:6px}
+.ptools input{flex:1 1 260px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 16px;color:var(--text);font:inherit;font-size:14px}
+.ptools input::placeholder{color:#5d5b66}
+.pnote{display:none;margin:8px 0 0;font-size:13px;color:var(--accent)}
+body.editing .pnote.show{display:block}
+
+/* page header */
+.hero{padding:28px 0 44px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(2.3rem,7vw,4.6rem);line-height:1;letter-spacing:-.035em;margin:0 0 14px;text-wrap:balance}
+.hero .sub{font-size:clamp(1.05rem,2.2vw,1.3rem);color:var(--muted);margin:0;max-width:44ch}
+.tally{margin-top:22px;font-size:13px;color:var(--muted);letter-spacing:.02em}
+
+/* editable text */
+body.editing .ed{border-radius:8px;outline:1px dashed #3a3a46;outline-offset:4px;cursor:text}
+body.editing .ed:hover{outline-color:#66667a}
+body.editing .ed:focus{outline:2px solid var(--accent)}
+body.editing .ed:empty::before{content:attr(data-ph);color:#5d5b66}
+body.editing .tab.ed{outline-offset:2px}
+
+/* sections */
+.sec{position:relative;border-top:1px solid var(--line);padding-top:30px;margin-top:20px;padding-bottom:36px}
+.sec::before{content:"";position:absolute;top:-1px;left:0;width:64px;height:2px;background:var(--accent)}
+.sec-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px}
+.num{font-family:var(--display);font-weight:600;font-size:14px;color:var(--accent);padding-top:9px;min-width:24px;font-variant-numeric:tabular-nums}
+.sec-text{flex:1;min-width:0}
+h2{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,3.6vw,2.2rem);letter-spacing:-.02em;line-height:1.1;margin:0;text-wrap:balance}
+.sec .sub{margin:6px 0 0;color:var(--muted);font-size:1rem;max-width:60ch}
+.count{font-size:13px;color:var(--muted);white-space:nowrap;padding-top:10px;font-variant-numeric:tabular-nums}
+.sec-tools{display:none;gap:6px}
+body.editing .sec-tools{display:flex}
+.mini{width:32px;height:32px;display:inline-grid;place-items:center;border-radius:50%;border:1px solid var(--line);background:var(--panel);font-size:14px;line-height:1;padding:0}
+.mini:hover{border-color:#55556a}
+.mini:disabled{opacity:.35;cursor:default}
+.mini.danger:hover:not(:disabled){border-color:#ff5252;color:#ff8a8a}
+
+/* rail */
+.rail-wrap{position:relative}
+.rail{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:var(--gut);margin:0 calc(var(--gut) * -1);padding:4px var(--gut) 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rail::-webkit-scrollbar{display:none}
+.card{position:relative;flex:0 0 var(--card-w);aspect-ratio:9/16;border-radius:22px;overflow:hidden;background:linear-gradient(160deg,#24242c,#14141a);border:1px solid var(--line);scroll-snap-align:start;cursor:pointer;isolation:isolate;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);border-color:#4a4a58}
+.poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
+.shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(to top,rgba(8,8,10,.82) 0%,rgba(8,8,10,.05) 45%,rgba(8,8,10,.25) 100%)}
+.play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;border:0;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:grid;place-items:center;transition:background .15s,transform .15s}
+.card:hover .play{background:var(--accent);transform:translate(-50%,-50%) scale(1.06)}
+.play svg{width:22px;height:22px;fill:#fff;margin-left:3px}
+.card:hover .play svg{fill:#16110f}
+.cap{position:absolute;left:0;right:0;bottom:0;padding:14px 14px 16px;display:flex;gap:10px;align-items:flex-end}
+.idx{font-family:var(--display);font-weight:600;font-size:13px;color:var(--accent);font-variant-numeric:tabular-nums;padding-bottom:1px}
+.cap-text{font-size:14px;font-weight:500;line-height:1.3;min-height:1.3em;flex:1;min-width:0;overflow-wrap:anywhere}
+.cap-text:empty{display:none}
+body.editing .cap-text:empty{display:block}
+.tools{display:none;position:absolute;top:10px;left:10px;right:10px;justify-content:space-between;z-index:2}
+body.editing .tools{display:flex}
+.tools .mini{background:rgba(12,12,15,.78);backdrop-filter:blur(6px)}
+.tools .grp{display:flex;gap:6px}
+.rail.r-1-1 .card{flex-basis:min(calc(var(--card-w) * 1.45),72vw);aspect-ratio:1/1}
+.rail.r-16-9 .card{flex-basis:min(calc(var(--card-w) * 2.1),86vw);aspect-ratio:16/9}
+.ratio{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px;font-weight:500;white-space:nowrap}
+.ratio:hover{border-color:#55556a}
+.card.ghost{cursor:default;display:grid;place-items:center;border-style:dashed;border-color:#3a3a46;background:transparent;color:#5d5b66;font-size:14px}
+.card.ghost:hover{transform:none;border-color:#3a3a46}
+.arrow{position:absolute;top:calc(50% - 20px);width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:rgba(23,23,28,.92);display:grid;place-items:center;font-size:20px;line-height:1;z-index:3;padding:0 0 3px}
+.arrow:hover{background:var(--accent);border-color:var(--accent);color:#16110f}
+.arrow.l{left:-14px}.arrow.r{right:-14px}
+@media (hover:none){.arrow{display:none}}
+
+/* add videos */
+.adder{display:none;margin-top:8px;gap:10px;align-items:stretch;flex-wrap:wrap}
+body.editing .adder{display:flex}
+.adder textarea{flex:1 1 320px;min-height:64px;resize:vertical;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:var(--text);font:inherit;font-size:14px}
+.adder textarea::placeholder{color:#5d5b66}
+.adder .btn{align-self:flex-start}
+.note{display:none;width:100%;font-size:13px;color:var(--accent);margin:0}
+body.editing .note.show{display:block}
+.add-sec{display:none;margin:8px 0 24px}
+body.editing .add-sec{display:inline-flex}
+
+.foot{border-top:1px solid var(--line);padding:26px 0 56px;color:var(--muted);font-size:14px}
+.foot p{margin:0;max-width:60ch}
+
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:50;background:rgba(6,6,8,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px}
+.lb-row{display:flex;align-items:center;gap:20px}
+.phone.r-1-1{width:min(84vw,calc(100dvh - 150px));aspect-ratio:1/1}
+.phone.r-16-9{width:min(84vw,calc((100dvh - 150px) * 16 / 9));aspect-ratio:16/9}
+.phone{width:min(92vw,calc((100dvh - 150px) * 9 / 16));aspect-ratio:9/16;border-radius:24px;overflow:hidden;background:#000;border:1px solid var(--line)}
+.phone iframe{width:100%;height:100%;border:0;display:block}
+.lb-nav{display:flex;flex-direction:column;gap:10px;align-items:center;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.lb-nav .mini{width:44px;height:44px;font-size:18px}
+.lb-close{position:absolute;top:14px;right:14px;width:44px;height:44px;font-size:18px}
+.lb-title{font-size:14px;color:var(--muted);text-align:center;max-width:90vw}
+.lb-open{display:inline-block;margin-top:8px;font-size:13px;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.lb-name{font-size:16px;font-weight:600;color:var(--text);margin-bottom:2px;overflow-wrap:anywhere}
+@media (max-width:640px){
+  .lb-row{flex-direction:column}
+  .lb-nav{flex-direction:row}
+  .phone{width:min(92vw,calc((100dvh - 220px) * 9 / 16))}
+  .phone.r-1-1{width:min(92vw,calc(100dvh - 260px))}
+  .phone.r-16-9{width:min(92vw,calc((100dvh - 260px) * 16 / 9))}
+}
+
+/* dialogs */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(6,6,8,.78);display:grid;place-items:center;padding:16px}
+.dlg{width:min(580px,100%);max-height:92vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:26px}
+.dlg h3{font-family:var(--display);font-weight:800;font-size:1.4rem;letter-spacing:-.02em;margin:0 0 6px}
+.dlg p{margin:0 0 14px;color:var(--muted);font-size:14px}
+.dlg textarea,.dlg input[type=text]{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text);font:13px/1.4 ui-monospace,Menlo,Consolas,monospace}
+.dlg textarea{min-height:92px;resize:vertical;word-break:break-all}
+.dlg .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}
+.dlg ul,.dlg ol{margin:0 0 14px;padding-left:20px;color:var(--muted);font-size:14px}
+.dlg li{margin-bottom:6px}
+.dlg li b{color:var(--text);font-weight:600}
+.dlg ul{margin:8px 0 0}
+.dlg a{color:var(--accent)}
+.dlg [hidden]{display:none}
+.scope{display:flex;flex-direction:column;gap:6px;margin:0 0 16px;font-size:14px}
+.scope label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.dlg-foot{display:flex;justify-content:flex-end}
+
+body.previewing{box-shadow:inset 0 3px 0 var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="lightbox"></div>
+<div id="sharebox"></div>
+<script id="cfg" type="application/json">{"projects": [{"name": "AD5", "title": "AD5", "sub": "Edited videos", "note": "Private preview prepared for you. Access expires 24 hours after this link was shared.", "sections": [{"h": "Emily", "s": "", "r": "9/16", "vids": [{"id": "1lhqsEcbwdvMnBczXxJqL5NbCpqVIEI2N", "cap": "AD5 / 1A / Emily"}, {"id": "1hFzLIFQbWzx0mHi_FF4_J11CrYfSM8a4", "cap": "AD5 / 2A / Emily"}]}, {"h": "Samantha", "s": "", "r": "9/16", "vids": [{"id": "140jH689CWEIkhTIF859upmBnYhJSOa5K", "cap": "AD5 / 1A / Samantha"}, {"id": "1_kFx8VvdHh63yqr7V3U7xry-5t8wOICL", "cap": "AD5 / 2A / Samantha"}]}, {"h": "Rhain", "s": "", "r": "9/16", "vids": [{"id": "10Ng8Pr-Y54Z0rSOjZ33Kyzpn04VpgdEy", "cap": "AD5 / 1A / Rhain"}, {"id": "17jxVSPoL7fTlxmmIhIz-TqT38QL99HAx", "cap": "AD5 / 2A / Rhain"}]}]}], "active": 0}</script>
+<script>
+(function(){
+'use strict';
+var KEY='reels-showcase-v1',SKEY='reels-showcase-script';
+var $=function(s,r){return (r||document).querySelector(s);};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+
+var DEFAULT_PROJECT={
+  name:'Project 1',
+  title:'Client Name',
+  sub:'Selected short-form work',
+  note:'Private preview prepared for you. Access expires 24 hours after this link was shared.',
+  sections:[
+    {h:'Brand Launch',s:'Teasers and announcement cuts',vids:[]},
+    {h:'Product Spotlights',s:'Feature-focused reels',vids:[]},
+    {h:'Behind the Scenes',s:'Process and team moments',vids:[]}
+  ]
+};
+
+var state,locked=false,baked=false,editing=false,previewing=false,previewAll=false,lb=null,shareScope='current',pnote='';
+var notes=new Map();
+var RATIOS=['9/16','1/1','16/9'];
+function rcls(r){return 'r-'+String(r).replace('/','-');}
+function guessRatio(h){var m=String(h||'').match(/(?:^|[^0-9])(9\s*[:x\/]\s*16|1\s*[:x\/]\s*1|16\s*[:x\/]\s*9)(?![0-9])/i);return m?m[1].replace(/\s/g,'').replace(/[:xX]/,'/'):'9/16';}
+
+/* Apps Script that lists a Drive folder. Runs as the user, so private folders work. */
+var SCRIPT_CODE=[
+'function doGet(e) {',
+'  try {',
+'    var root = DriveApp.getFolderById(e.parameter.folder);',
+'    var subs = [], it = root.getFolders();',
+'    while (it.hasNext()) {',
+'      var s = it.next();',
+'      subs.push({name: s.getName(), videos: vids(s)});',
+'    }',
+'    return out({name: root.getName(), videos: vids(root), folders: subs});',
+'  } catch (err) {',
+'    return out({error: String(err)});',
+'  }',
+'}',
+'function vids(folder) {',
+'  var list = [], it = folder.getFiles();',
+'  while (it.hasNext()) {',
+'    var f = it.next();',
+'    if (f.getMimeType().indexOf("video/") === 0) list.push({id: f.getId(), name: f.getName()});',
+'  }',
+'  return list;',
+'}',
+'function out(obj) {',
+'  return ContentService.createTextOutput(JSON.stringify(obj))',
+'    .setMimeType(ContentService.MimeType.JSON);',
+'}'
+].join('\n');
+
+function enc(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function dec(s){return JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));}
+
+function normProject(p){
+  p=p||{};
+  p.title=p.title==null?'':String(p.title);
+  p.name=p.name==null?p.title:String(p.name);
+  p.sub=p.sub==null?'':String(p.sub);
+  p.note=p.note==null?'':String(p.note);
+  p.sections=Array.isArray(p.sections)?p.sections:[];
+  p.sections.forEach(function(sec){
+    sec.h=sec.h==null?'':String(sec.h);
+    sec.s=sec.s==null?'':String(sec.s);
+    sec.r=RATIOS.indexOf(sec.r)<0?'9/16':sec.r;
+    sec.vids=Array.isArray(sec.vids)?sec.vids.filter(function(v){return v&&v.id;}):[];
+    sec.vids.forEach(function(v){v.cap=v.cap==null?'':String(v.cap);});
+  });
+  return p;
+}
+function normalize(s){
+  s=s||{};
+  if(!Array.isArray(s.projects))s={projects:[s]};
+  s.projects=s.projects.length?s.projects.map(normProject):[normProject(JSON.parse(JSON.stringify(DEFAULT_PROJECT)))];
+  s.active=Math.min(Math.max(+s.active||0,0),s.projects.length-1);
+  return s;
+}
+function cur(){return state.projects[state.active];}
+
+function load(){
+  var h=location.hash;
+  if(h.indexOf('#v=')===0){
+    try{state=normalize(dec(h.slice(3)));locked=true;return;}catch(e){}
+  }
+  var b=null;
+  try{var t=$('#cfg').textContent.trim();if(t)b=JSON.parse(t);}catch(e){}
+  if(b){state=normalize(b);baked=true;locked=(h!=='#edit');return;}
+  try{var r=localStorage.getItem(KEY);if(r)state=normalize(JSON.parse(r));}catch(e){}
+  if(!state)state=normalize({projects:[JSON.parse(JSON.stringify(DEFAULT_PROJECT))]});
+}
+function save(){if(baked||locked)return;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function getScript(){try{return localStorage.getItem(SKEY)||'';}catch(e){return '';}}
+
+/* Drive links and folders */
+function parseLinks(text){
+  var items=[],folderIds=[],bad=0;
+  String(text||'').split(/\r?\n/).forEach(function(line){
+    line=line.trim();if(!line)return;
+    var fm=line.match(/\/folders\/([A-Za-z0-9_-]{10,})/);
+    if(fm){folderIds.push(fm[1]);return;}
+    var re=/(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{15,})/g,ids=[],m;
+    while((m=re.exec(line)))ids.push(m[1]);
+    if(!ids.length&&/^[A-Za-z0-9_-]{25,}$/.test(line))ids.push(line);
+    if(!ids.length){bad++;return;}
+    var cap='';
+    if(ids.length===1&&ids[0]!==line){
+      cap=line.replace(/https?:\/\/\S+/g,' ').replace(/^[\s|,;:\-–—]+|[\s|,;:\-–—]+$/g,'').replace(/\s+/g,' ');
+    }
+    ids.forEach(function(id){items.push({id:id,cap:cap});});
+  });
+  return {items:items,folderIds:folderIds,bad:bad};
+}
+function byName(a,b){return a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'});}
+function fetchFolder(id){
+  var url=getScript();
+  if(!url)return Promise.reject(new Error('noscript'));
+  return fetch(url+(url.indexOf('?')<0?'?':'&')+'folder='+encodeURIComponent(id))
+    .then(function(r){return r.text();},function(){throw new Error('net');})
+    .then(function(txt){
+      var d;
+      try{d=JSON.parse(txt);}catch(x){throw new Error('html');}
+      if(d&&d.error)throw new Error('script:'+d.error);
+      if(!d||!Array.isArray(d.videos))throw new Error('bad');
+      d.videos.sort(byName);
+      d.folders=(d.folders||[]).sort(byName);
+      d.folders.forEach(function(f){f.videos.sort(byName);});
+      return d;
+    });
+}
+function toVid(v){return {id:v.id,cap:v.name};}
+function errMsg(err){
+  var m=String(err&&err.message||'');
+  if(m==='net')return 'Could not reach your Drive script. Click Connect Drive and check the URL is the Web app URL that ends in /exec.';
+  if(m==='html')return 'Google sent back a page instead of data. In Deploy, Manage deployments, set Who has access to Anyone, then approve the permissions when asked.';
+  if(m.indexOf('script:')===0)return 'Drive could not open that folder ('+m.slice(7)+'). Check the folder link, and that the Google account running the script can see the folder.';
+  return 'Could not read that folder. Check the link and your Drive connection.';
+}
+
+/* render */
+function render(reset){
+  var rails=[].map.call(document.querySelectorAll('.rail'),function(r){return r.scrollLeft;});
+  var y=window.scrollY;
+  var P=cur();
+  document.body.classList.toggle('editing',editing);
+  document.body.classList.toggle('previewing',previewing);
+  document.title=P.title||P.name||'Reels Showcase';
+  var ce=editing?' contenteditable="plaintext-only" spellcheck="false"':'';
+  var total=P.sections.reduce(function(n,s){return n+s.vids.length;},0);
+  var shown=P.sections.filter(function(s){return editing||s.vids.length;}).length;
+  var connected=!!getScript();
+
+  var h='<div class="wrap">';
+  var many=state.projects.length>1;
+  h+='<div class="bar"><span class="status">'+(previewing?'Previewing what your client will see.':editing?'Editing. Changes save in this browser.':'')+'</span><div class="actions">'+
+     (locked?'':(previewing?
+       (many?'<button class="btn'+(previewAll?'':' on')+'" data-act="pv-scope" data-v="one">This project</button><button class="btn'+(previewAll?' on':'')+'" data-act="pv-scope" data-v="all">All projects</button>':'')+
+       '<button class="btn solid" data-act="unpreview">Back to editing</button>':
+       '<button class="btn" data-act="preview">Preview</button><button class="btn'+(editing?' on':'')+'" data-act="edit">'+(editing?'Done editing':'Edit')+'</button><button class="btn solid" data-act="share">Send to client</button>'))+
+     '</div></div>';
+
+  if(editing||(many&&(!previewing||previewAll))){
+    h+='<nav class="tabs" role="tablist" aria-label="Projects">'+state.projects.map(function(p,i){
+      var on=i===state.active;
+      return '<div class="tab'+(on?' on':'')+(on&&editing?' ed':'')+'" role="tab" aria-selected="'+on+'" tabindex="0"'+
+        (on?'':' data-act="tab" data-i="'+i+'"')+
+        (on&&editing?' data-edit="name" data-ph="Project name"'+ce:'')+'>'+esc(p.name||(editing?'':'Untitled'))+'</div>';
+    }).join('')+(editing?'<button class="tab add" data-act="add-proj">+ Project</button>':'')+'</nav>';
+  }
+  if(editing){
+    h+='<div class="ptools"><div class="grp">'+
+       '<button class="mini" data-act="mv-proj" data-dir="-1" title="Move project left" aria-label="Move project left"'+(state.active===0?' disabled':'')+'>&larr;</button>'+
+       '<button class="mini" data-act="mv-proj" data-dir="1" title="Move project right" aria-label="Move project right"'+(state.active===state.projects.length-1?' disabled':'')+'>&rarr;</button>'+
+       '<button class="mini danger" data-act="del-proj" title="Delete project" aria-label="Delete project"'+(state.projects.length<2?' disabled':'')+'>&times;</button></div>'+
+       '<input id="folder-url" type="text" placeholder="Paste a Drive folder link to import its videos" aria-label="Drive folder link">'+
+       '<button class="btn" data-act="import-folder">Import folder</button>'+
+       '<button class="btn" data-act="setup">'+(connected?'Drive connected':'Connect Drive')+'</button></div>'+
+       '<p class="pnote'+(pnote?' show':'')+'">'+esc(pnote)+'</p>';
+  }
+
+  h+='<header class="hero"><h1 class="ed" data-edit="title" data-ph="Overall title"'+ce+'>'+esc(P.title)+'</h1>'+
+     '<p class="sub ed" data-edit="sub" data-ph="Subtitle"'+ce+'>'+esc(P.sub)+'</p>'+
+     '<div class="tally">'+total+(total===1?' video':' videos')+' &middot; '+shown+(shown===1?' section':' sections')+'</div></header>';
+
+  P.sections.forEach(function(sec,si){
+    if(!editing&&!sec.vids.length)return;
+    var n=sec.vids.length,note=notes.get(sec)||'';
+    h+='<section class="sec" data-si="'+si+'"><div class="sec-head"><div class="num">'+String(si+1).padStart(2,'0')+'</div>'+
+       '<div class="sec-text"><h2 class="ed" data-edit="h" data-ph="Section header"'+ce+'>'+esc(sec.h)+'</h2>'+
+       '<p class="sub ed" data-edit="s" data-ph="Subheader"'+ce+'>'+esc(sec.s)+'</p></div>'+
+       '<div class="count">'+n+(n===1?' video':' videos')+'</div>'+
+       '<div class="sec-tools"><button class="ratio" data-act="ratio" title="Change video shape" aria-label="Video shape '+sec.r.replace('/',':')+', click to change">'+sec.r.replace('/',':')+'</button><button class="mini" data-act="mv-sec" data-dir="-1" title="Move section up" aria-label="Move section up">&uarr;</button>'+
+       '<button class="mini" data-act="mv-sec" data-dir="1" title="Move section down" aria-label="Move section down">&darr;</button>'+
+       '<button class="mini danger" data-act="del-sec" title="Delete section" aria-label="Delete section">&times;</button></div></div>';
+    h+='<div class="rail-wrap"><button class="arrow l" data-act="scroll" data-dir="-1" aria-label="Scroll left">&lsaquo;</button><div class="rail '+rcls(sec.r)+'">';
+    sec.vids.forEach(function(v,vi){
+      h+='<article class="card" data-vi="'+vi+'">'+
+         '<img class="poster" loading="lazy" alt="" referrerpolicy="no-referrer" src="https://drive.google.com/thumbnail?id='+encodeURIComponent(v.id)+'&sz=w480" onerror="this.remove()">'+
+         '<div class="shade"></div>'+
+         '<button class="play" data-act="open" aria-label="Play video '+(vi+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></button>'+
+         '<div class="tools"><div class="grp"><button class="mini" data-act="mv-vid" data-dir="-1" title="Move left" aria-label="Move video left">&larr;</button><button class="mini" data-act="mv-vid" data-dir="1" title="Move right" aria-label="Move video right">&rarr;</button></div>'+
+         '<button class="mini danger" data-act="del-vid" title="Remove video" aria-label="Remove video">&times;</button></div>'+
+         '<div class="cap"><span class="idx">'+String(vi+1).padStart(2,'0')+'</span><div class="cap-text ed" data-edit="cap" data-ph="File name"'+ce+'>'+esc(v.cap)+'</div></div></article>';
+    });
+    if(editing&&!n){for(var g=1;g<=3;g++)h+='<div class="card ghost">Video '+g+'</div>';}
+    h+='</div><button class="arrow r" data-act="scroll" data-dir="1" aria-label="Scroll right">&rsaquo;</button></div>';
+    h+='<div class="adder"><textarea id="add-'+si+'" placeholder="One per line: a video link, a file name then the link (Launch teaser.mp4 | https://drive.google.com/...), or a folder link" aria-label="Drive links for '+esc(sec.h)+'"></textarea>'+
+       '<button class="btn" data-act="add-vids">Add videos</button>'+
+       '<p class="note'+(note?' show':'')+'">'+esc(note)+'</p></div>';
+    h+='</section>';
+  });
+  h+='<button class="btn add-sec" data-act="add-sec">+ Add section</button>';
+  if(P.note||editing){
+    h+='<footer class="foot"><p class="ed" data-edit="note" data-ph="Footer note"'+ce+'>'+esc(P.note)+'</p></footer>';
+  }
+  h+='</div>';
+  $('#app').innerHTML=h;
+  if(reset){window.scrollTo(0,0);}
+  else{
+    [].forEach.call(document.querySelectorAll('.rail'),function(r,i){if(rails[i])r.scrollLeft=rails[i];});
+    window.scrollTo(0,y);
+  }
+}
+
+/* lightbox */
+function drawLb(){
+  var box=$('#lightbox');
+  if(!lb){box.innerHTML='';return;}
+  var sec=cur().sections[lb.si],v=sec&&sec.vids[lb.vi];
+  if(!v){lb=null;box.innerHTML='';return;}
+  var n=sec.vids.length;
+  box.innerHTML='<div class="lb" role="dialog" aria-modal="true" aria-label="Video viewer">'+
+    '<button class="mini lb-close" data-act="lb-close" aria-label="Close viewer">&times;</button>'+
+    '<div class="lb-row"><div class="phone '+rcls(sec.r)+'"><iframe src="https://drive.google.com/file/d/'+encodeURIComponent(v.id)+'/preview" allow="autoplay; fullscreen" allowfullscreen title="Video '+(lb.vi+1)+'"></iframe></div>'+
+    '<div class="lb-nav"><button class="mini" data-act="lb-prev" aria-label="Previous video"'+(lb.vi===0?' disabled':'')+'>&uarr;</button>'+
+    '<span>'+(lb.vi+1)+' / '+n+'</span>'+
+    '<button class="mini" data-act="lb-next" aria-label="Next video"'+(lb.vi===n-1?' disabled':'')+'>&darr;</button></div></div>'+
+    '<div class="lb-title"><div class="lb-name">'+esc(v.cap||'Untitled video')+'</div><div>'+esc(sec.h)+'</div>'+
+    '<a class="lb-open" href="https://drive.google.com/file/d/'+encodeURIComponent(v.id)+'/view" target="_blank" rel="noopener">Video blank or asking for access? Open it in Google Drive</a></div></div>';
+  var c=box.querySelector('.lb-close');if(c)c.focus();
+}
+function openLb(si,vi){lb={si:si,vi:vi};drawLb();}
+function closeLb(){lb=null;drawLb();}
+function stepLb(d){
+  if(!lb)return;
+  var n=cur().sections[lb.si].vids.length,k=lb.vi+d;
+  if(k<0||k>=n)return;
+  lb.vi=k;drawLb();
+}
+
+/* clipboard */
+function fallbackCopy(text){
+  var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();
+}
+function copyText(text,btn,label){
+  var done=function(){btn.textContent='Copied';setTimeout(function(){btn.textContent=label;},1600);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){fallbackCopy(text);done();});}
+  else{fallbackCopy(text);done();}
+}
+
+/* send to client */
+function payload(){return {projects:shareScope==='all'?state.projects:[cur()],active:0};}
+function clientLink(){return location.href.split('#')[0]+'#v='+enc(payload());}
+function openShare(){
+  var onFile=location.protocol==='file:';
+  shareScope='current';
+  var many=state.projects.length>1;
+  $('#sharebox').innerHTML='<div class="modal"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="sh-t">'+
+    '<h3 id="sh-t">Send to client</h3>'+
+    '<p>Three steps. Your titles, sections and videos are built into the file you download.</p>'+
+    (many?'<div class="scope" role="radiogroup" aria-label="What to send"><label><input type="radio" name="scope" value="current" checked> This project only ('+esc(cur().name||'Untitled')+')</label>'+
+      '<label><input type="radio" name="scope" value="all"> All '+state.projects.length+' projects as tabs</label></div>':'')+
+    '<ol><li><b>Download the client copy.</b></li></ol>'+
+    '<div class="row"><button class="btn solid" data-act="download">Download client copy (.html)</button></div>'+
+    '<ol start="2"><li><b>Get it to your client.</b> Pick one:'+
+    '<ul><li>No hosting: attach the file to an email or chat. Your client double-clicks it and it opens in their browser.</li>'+
+    '<li>A link: drag the file onto <a href="https://tiiny.host" target="_blank" rel="noopener">tiiny.host</a> and paste the link it gives you. Their free plan keeps links for 7 days.</li></ul></li>'+
+    '<li><b>Set the 24-hour limit in Drive.</b> Share each video with your client\'s email and set the access expiry to 1 day. After that the videos stop playing, whichever way they received the page.</li></ol>'+
+    (onFile?'':'<p>Already hosting this page? <a href="#" data-act="toggle-link">Show a link that carries your content</a>.</p>'+
+    '<div id="link-box" hidden><textarea id="share-link" readonly aria-label="Client link">'+esc(clientLink())+'</textarea>'+
+    '<div class="row"><button class="btn" data-act="copy-link">Copy link</button></div></div>')+
+    '<div class="dlg-foot"><button class="btn" data-act="share-close">Close</button></div></div></div>';
+}
+function closeShare(){$('#sharebox').innerHTML='';}
+function download(){
+  var clone=document.documentElement.cloneNode(true);
+  ['#app','#lightbox','#sharebox'].forEach(function(s){var el=clone.querySelector(s);if(el)el.innerHTML='';});
+  clone.querySelector('body').className='';
+  clone.querySelector('#cfg').textContent=JSON.stringify(payload()).replace(/</g,'\\u003c');
+  var html='<!DOCTYPE html>\n'+clone.outerHTML;
+  var blob=new Blob([html],{type:'text/html'});
+  var a=document.createElement('a');
+  var base=shareScope==='all'?'projects':(cur().title||cur().name||'showcase');
+  var slug=base.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'showcase';
+  a.href=URL.createObjectURL(blob);a.download=slug+'-showcase.html';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+}
+
+/* connect Drive dialog */
+function openSetup(){
+  $('#sharebox').innerHTML='<div class="modal"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="su-t">'+
+    '<h3 id="su-t">Connect Drive folders</h3>'+
+    '<p>One-time setup, about two minutes. It lets this page read the file names in a folder you paste.</p>'+
+    '<ol><li>Open <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a> and click <b>New project</b>.</li>'+
+    '<li>Delete the sample code, paste the code below, and click Save.</li>'+
+    '<li>Click <b>Deploy</b>, then <b>New deployment</b>, and choose <b>Web app</b>. Set <b>Execute as</b> to Me and <b>Who has access</b> to Anyone. Deploy and approve the permissions. If you change the code later, use Deploy, Manage deployments, edit, and pick a New version.</li>'+
+    '<li>Copy the Web app URL and paste it at the bottom of this window.</li></ol>'+
+    '<textarea id="script-code" readonly aria-label="Apps Script code" style="min-height:150px;word-break:normal">'+esc(SCRIPT_CODE)+'</textarea>'+
+    '<div class="row"><button class="btn" data-act="copy-script">Copy code</button></div>'+
+    '<p>The script runs as you, so it can read folders that are not shared publicly. Anyone who has the web app URL and a folder\'s ID can list that folder\'s video names, so keep the URL to yourself. It is saved only in this browser and never goes into the client copy.</p>'+
+    '<input type="text" id="script-url" placeholder="https://script.google.com/macros/s/.../exec" value="'+esc(getScript())+'" aria-label="Web app URL">'+
+    '<div class="row"><button class="btn solid" data-act="save-script">Save</button></div>'+
+    '<div class="dlg-foot"><button class="btn" data-act="share-close">Close</button></div></div></div>';
+}
+
+/* actions */
+function swap(arr,i,d){var j=i+d;if(j<0||j>=arr.length)return false;var t=arr[i];arr[i]=arr[j];arr[j]=t;return true;}
+function plural(n,w){return n+' '+w+(n===1?'':'s');}
+
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.classList&&t.classList.contains('lb')){closeLb();return;}
+  if(t.classList&&t.classList.contains('modal')){closeShare();return;}
+  var b=t.closest('[data-act]');
+  var secEl=t.closest('.sec'),cardEl=t.closest('.card');
+  var si=secEl?+secEl.dataset.si:-1,vi=cardEl&&!cardEl.classList.contains('ghost')?+cardEl.dataset.vi:-1;
+  if(!b){
+    if(cardEl&&vi>=0&&!t.closest('.ed,.tools'))openLb(si,vi);
+    return;
+  }
+  var act=b.dataset.act,dir=+b.dataset.dir,P=cur();
+  if(act==='edit'){editing=!editing;previewing=false;pnote='';render();}
+  else if(act==='preview'){previewing=true;editing=false;pnote='';render(true);}
+  else if(act==='unpreview'){previewing=false;editing=true;render(true);}
+  else if(act==='pv-scope'){previewAll=b.dataset.v==='all';render();}
+  else if(act==='share'){openShare();}
+  else if(act==='share-close'){closeShare();}
+  else if(act==='copy-link'){var ta=$('#share-link');if(ta)copyText(ta.value,b,'Copy link');}
+  else if(act==='toggle-link'){e.preventDefault();var lbx=$('#link-box');if(lbx)lbx.hidden=!lbx.hidden;}
+  else if(act==='download'){download();}
+  else if(act==='setup'){openSetup();}
+  else if(act==='copy-script'){copyText(SCRIPT_CODE,b,'Copy code');}
+  else if(act==='save-script'){
+    var u=($('#script-url').value||'').trim();
+    if(u&&!/^https:\/\/script\.google\.com\//.test(u)){b.textContent='Use the Web app URL';setTimeout(function(){b.textContent='Save';},2000);return;}
+    try{if(u)localStorage.setItem(SKEY,u);else localStorage.removeItem(SKEY);}catch(err){}
+    closeShare();pnote=u?'Drive connected. Paste a folder link and click Import folder.':'';render();
+  }
+  else if(act==='tab'){state.active=+b.dataset.i;pnote='';save();render(true);}
+  else if(act==='add-proj'){
+    state.projects.push({name:'Project '+(state.projects.length+1),title:'New project',sub:'Add a short description',note:P.note,sections:[{h:'Section 1',s:'Add a short description',vids:[]}]});
+    state.active=state.projects.length-1;pnote='';save();render(true);
+  }
+  else if(act==='mv-proj'){if(swap(state.projects,state.active,dir)){state.active+=dir;save();render();}}
+  else if(act==='del-proj'){
+    if(state.projects.length>1&&confirm('Delete the project "'+(P.name||'Untitled')+'" and everything in it? Your Drive files are not affected.')){
+      state.projects.splice(state.active,1);state.active=Math.max(0,state.active-1);pnote='';save();render(true);
+    }
+  }
+  else if(act==='import-folder'){
+    var inp=$('#folder-url'),raw=inp.value,pr=parseLinks(raw);
+    if(!pr.folderIds.length){pnote='Paste a Drive folder link first.';render();var i1=$('#folder-url');if(i1)i1.value=raw;return;}
+    if(!getScript()){pnote='Click Connect Drive first. It is a one-time setup.';render();var i2=$('#folder-url');if(i2)i2.value=raw;return;}
+    pnote='Importing...';render();
+    Promise.all(pr.folderIds.map(fetchFolder)).then(function(list){
+      var secs=0,vids=0;
+      list.forEach(function(d){
+        [{h:d.name,v:d.videos}].concat(d.folders.map(function(f){return {h:f.name,v:f.videos};})).forEach(function(g){
+          if(!g.v.length)return;
+          P.sections.push({h:g.h,s:'',r:guessRatio(g.h),vids:g.v.map(toVid)});secs++;vids+=g.v.length;
+        });
+      });
+      pnote=vids?'Imported '+plural(vids,'video')+' into '+plural(secs,'section')+', named from the files.':'No videos found in that folder.';
+      save();render();
+    }).catch(function(err){pnote=errMsg(err);render();var i3=$('#folder-url');if(i3)i3.value=raw;});
+  }
+  else if(act==='scroll'){var r=secEl.querySelector('.rail');r.scrollBy({left:dir*r.clientWidth*0.8,behavior:'smooth'});}
+  else if(act==='open'){openLb(si,vi);}
+  else if(act==='lb-close'){closeLb();}
+  else if(act==='lb-prev'){stepLb(-1);}
+  else if(act==='lb-next'){stepLb(1);}
+  else if(act==='ratio'){var cs=P.sections[si];cs.r=RATIOS[(RATIOS.indexOf(cs.r)+1)%RATIOS.length];save();render();}
+  else if(act==='mv-sec'){if(swap(P.sections,si,dir)){save();render();}}
+  else if(act==='del-sec'){
+    var sec=P.sections[si];
+    if(!sec.vids.length||confirm('Delete "'+(sec.h||'this section')+'" and its '+sec.vids.length+' videos from the showcase? Your Drive files are not affected.')){
+      P.sections.splice(si,1);save();render();
+    }
+  }
+  else if(act==='mv-vid'){if(swap(P.sections[si].vids,vi,dir)){save();render();}}
+  else if(act==='del-vid'){P.sections[si].vids.splice(vi,1);save();render();}
+  else if(act==='add-sec'){P.sections.push({h:'New section',s:'Add a short description',vids:[]});save();render();}
+  else if(act==='add-vids'){
+    var sobj=P.sections[si],box=secEl.querySelector('textarea'),raw2=box.value,p=parseLinks(raw2);
+    var have={};sobj.vids.forEach(function(v){have[v.id]=1;});
+    var added=0,dup=0;
+    function addOne(it){if(have[it.id]){dup++;return;}have[it.id]=1;sobj.vids.push({id:it.id,cap:it.cap});added++;}
+    p.items.forEach(addOne);
+    function summary(extra){
+      var msg=[];
+      if(added)msg.push('Added '+plural(added,'video')+'.');
+      if(dup)msg.push(dup+' already in this section.');
+      if(p.bad)msg.push(p.bad+' line'+(p.bad===1?' was':'s were')+' not a Drive link.');
+      if(extra)msg.push(extra);
+      if(!msg.length)msg.push('Paste at least one Drive link.');
+      return msg.join(' ');
+    }
+    function restore(){var nt=document.querySelector('.sec[data-si="'+si+'"] textarea');if(nt&&P.sections[si]===sobj)nt.value=raw2;}
+    if(!p.folderIds.length){
+      notes.set(sobj,summary(''));save();render();
+      if(p.bad)restore();
+    }else if(!getScript()){
+      notes.set(sobj,summary('To import a folder, click Connect Drive at the top first.'));save();render();restore();
+    }else{
+      notes.set(sobj,'Importing folder...');save();render();
+      Promise.all(p.folderIds.map(fetchFolder)).then(function(list){
+        list.forEach(function(d){
+          d.videos.forEach(function(v){addOne(toVid(v));});
+          d.folders.forEach(function(f){f.videos.forEach(function(v){addOne(toVid(v));});});
+        });
+        notes.set(sobj,summary(''));save();render();
+      }).catch(function(err){notes.set(sobj,summary(errMsg(err)));save();render();restore();});
+    }
+  }
+});
+
+document.addEventListener('change',function(e){
+  if(e.target.name==='scope'){
+    shareScope=e.target.value;
+    var ta=$('#share-link');if(ta)ta.value=clientLink();
+  }
+});
+document.addEventListener('input',function(e){
+  var el=e.target.closest&&e.target.closest('[data-edit]');
+  if(!el)return;
+  var k=el.dataset.edit,val=el.textContent,P=cur();
+  if(k==='name'){P.name=val;}
+  else if(k==='title'){P.title=val;document.title=val||P.name||'Reels Showcase';}
+  else if(k==='sub')P.sub=val;
+  else if(k==='note')P.note=val;
+  else{
+    var si=+el.closest('.sec').dataset.si;
+    if(k==='cap')P.sections[si].vids[+el.closest('.card').dataset.vi].cap=val;
+    else P.sections[si][k]=val;
+  }
+  save();
+});
+document.addEventListener('keydown',function(e){
+  var el=e.target.closest&&e.target.closest('[data-edit]');
+  if(el&&e.key==='Enter'){e.preventDefault();el.blur();return;}
+  var tab=e.target.closest&&e.target.closest('[role="tab"][data-act]');
+  if(tab&&(e.key==='Enter'||e.key===' ')){e.preventDefault();tab.click();return;}
+  if(e.key==='Escape'){if(lb)closeLb();else closeShare();return;}
+  if(lb){
+    if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();stepLb(-1);}
+    else if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();stepLb(1);}
+  }
+});
+window.addEventListener('hashchange',function(){location.reload();});
+
+load();
+editing=!locked&&state.projects.every(function(p){return p.sections.every(function(s){return !s.vids.length;});});
+render();
+})();
+</script>
+</body>
+</html>
